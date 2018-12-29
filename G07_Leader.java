@@ -13,7 +13,9 @@ public class G07_Leader extends TeamRobot {
 	private boolean scanEnemy;
     private Target currentTarget = null;
     private ScannedRobotEvent sre = null;
-    private double circum;
+
+		private double e_rad;
+    private double e_lenth;
 
 	public void run(){
 		setBodyColor(Color.white);
@@ -29,8 +31,9 @@ public class G07_Leader extends TeamRobot {
 		move_robot();
 
 		while (true) {
-			setAhead(circum);
-		    setTurnLeft(360);
+
+			　setTurnRight(e_rad);
+			  setAhead(e_lenth - 50);
 
 		    if(sre != null) {
 		    	if(!isTeammate(sre.getName())) {
@@ -136,6 +139,9 @@ public class G07_Leader extends TeamRobot {
 						- radius * Math.cos(Math.toRadians(e.getHeading() + dRad));
 		double nextY = y + radius * Math.sin(Math.toRadians(e.getHeading()))
 						- radius * Math.sin(Math.toRadians(e.getHeading() + dRad));
+
+		e_rad = e.getBearing();
+		e_lenth = e.getDistance();
 
 		if(nextX < 0){
 			nextX = 0;
