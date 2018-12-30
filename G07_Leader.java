@@ -1,21 +1,20 @@
-package group07;
+package pbl;
 
 import static robocode.util.Utils.*;
 
 import java.awt.Color;
 
-import robocode.HitRobotEvent;
-import robocode.HitWallEvent;
 import robocode.ScannedRobotEvent;
 import robocode.TeamRobot;
 
-public class G07_Leader extends TeamRobot {
+public class pbl_robot extends TeamRobot {
 	private boolean scanEnemy;
     private Target currentTarget = null;
     private ScannedRobotEvent sre = null;
 
-		private double e_rad;
+    private double e_rad;
     private double e_lenth;
+
 
 	public void run(){
 		setBodyColor(Color.white);
@@ -28,17 +27,18 @@ public class G07_Leader extends TeamRobot {
 		setAdjustGunForRobotTurn(true);
 
 		turnRadarRight(360);
-		move_robot();
 
 		while (true) {
 
-			　setTurnRight(e_rad);
-			  setAhead(e_lenth - 50);
+			setTurnRight(e_rad);
+		    setAhead(e_lenth - 50);
 
 		    if(sre != null) {
 		    	if(!isTeammate(sre.getName())) {
 					scanEnemy=true;
 				}
+
+
 		    	setRadar(sre);
 		    }
 
@@ -59,21 +59,6 @@ public class G07_Leader extends TeamRobot {
 			}
 		}
 		currentTarget = new Target(e.getName(), e.getHeading(), getTime());
-	}
-
-	@Override
-	public void onHitWall(HitWallEvent event) {
-		setTurnLeft(240);
-		setAhead(circum);
-		execute();
-	}
-
-	@Override
-	public void onHitRobot(HitRobotEvent event) {
-		back(circum / (2 * Math.PI));
-		setTurnLeft(240);
-		setAhead(circum);
-		execute();
 	}
 
 	private void setRadar(ScannedRobotEvent e){
@@ -159,6 +144,8 @@ public class G07_Leader extends TeamRobot {
 		double dy = nextY -getY();
 		double theta = Math.toDegrees(Math.atan2(dx, dy));
 
+		System.out.print("x: " + nextX + " , y: " + nextY + ", theta: " + theta + "\n");
+
 		turnGunRight(normalRelativeAngleDegrees(theta - getGunHeading()));
 		fire(energy);
 
@@ -208,74 +195,27 @@ public class G07_Leader extends TeamRobot {
 			// Calculate angle to target
 			double theta = Math.toDegrees(Math.atan2(dx, dy));
 
+			double x = dx + getX();
+			double y = dy + getY();
+			System.out.print("x: " + x + " , y: " + y + ", theta: " + theta + "\n");
+
 			// Turn gun to target
 			turnGunRight(normalRelativeAngleDegrees(theta - getGunHeading()));
 			fire(energy);
 		}
 	}
 
-	//runのループを行う前に実行
-	void move_robot(){
-		double fieldHeight = getBattleFieldHeight();
-		double fieldWidth = getBattleFieldWidth();
-		double centerX = (fieldWidth / 2);
-		double centerY = (fieldHeight / 2);
-		double x = getX();
-		double y = getY();
-		double mini_wall_y, mini_wall_x, mini_wall; //壁との距離
-		double wall_y, wall_x, wall; //最も近い壁
-		double rad; //フィールドに宣言
+	//**********************************
 
-		if(y >= centerY){
-			mini_wall_y = 799 - y;
-			wall_y = 1;
-			//上の壁
-		}else{
-			mini_wall_y = y;
-			wall_y = 2;
-		    //下の壁
+	void move(double x, double y, double lenth) {
+		if(lenth < 100) {
+			turnRight(e_rad);
+		}else {
+
 		}
-
-		if(x <= centerX){
-			mini_wall_x = x;
-			wall_x = 3;
-			//左の壁
-		}else{
-			mini_wall_x = 799 - x;
-			wall_x = 4;
-			//右の壁
-		}
-
-		if(mini_wall_x >= mini_wall_y){
-			mini_wall = mini_wall_y;
-			wall = wall_y;
-		}else{
-			mini_wall = mini_wall_x;
-			wall = wall_x;
-		}
-
-		rad = mini_wall / 2;
-		circum = 2 * Math.PI * (rad);
-
-		if(wall == 1) {
-			turnRight(180 - getHeading());
-		} else if(wall == 2) {
-			turnLeft(getHeading());
-		} else if(wall == 3) {
-			turnRight(90 - getHeading());
-		} else if(wall == 4) {
-			turnRight(270 - getHeading());
-		}
-
-		ahead(rad);
-		turnLeft(80);
-
-		System.out.println("x:"+x);
-		System.out.println("y:"+y);
-		System.out.println("rad:"+rad);
-		System.out.println("nowX:"+getX());
-		System.out.println("nowY:"+getY());
 	}
+
+	//**********************************
 
 	class Target {
 		private String name = null;
