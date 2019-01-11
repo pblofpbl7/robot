@@ -152,7 +152,44 @@ public class RemakedRobot extends TeamRobot {
 		}
 	}
 
+	
+	
+         private void setRadar(ScannedRobotEvent e){
 
+	 double turnradar1;
+         double turnradar2;
+
+	    if(scanEnemy){
+		if (Math.abs(angularVelocity) > 0.00001) {
+			//角度の変化が大きいときは、円形予測
+			turnradar1=enkeiYosoku(e, diff, angularVelocity)-getRadarHeading();
+		}else {
+			turnradar1=senkeiYosoku(e)-getRadarHeading();
+		}
+
+	   	 if(turnradar1 < 180 || -180 < turnradar1){
+	    		turnRadarLeft(turnradar1);
+	    		turnRadarLeft(45);
+	    		turnRadarRight(90);
+
+	    	} else {
+			 if(turnradar1 > 0){						//180<turnradar1<360
+		    		turnradar2 = 360 - turnradar1;
+		 	}else{									//-360<turnradar1<-180
+		    		turnradar2 = 360 + turnradar1;
+		 	}
+		 	turnRadarRight(turnradar2);
+	         	turnRadarRight(45);
+	         	turnRadarLeft(90);
+	    	}
+
+	    else {
+
+	    	turnRadarRight(360);
+
+	    }
+
+	}
 	/*
 	 * 保持する情報
 	 *  ・名前
