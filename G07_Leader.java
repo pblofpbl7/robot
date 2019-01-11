@@ -1,20 +1,20 @@
-package pbl;
+package group07;
 
 import static robocode.util.Utils.*;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Arrays;
 
+import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
 import robocode.TeamRobot;
 
-public class pbl_robot extends TeamRobot {
-	private boolean scanEnemy;
-    private Target currentTarget = null;
-    private ScannedRobotEvent sre = null;
-
-    private double e_rad;
-    private double e_lenth;
-
+public class G07_Leader extends TeamRobot {
+	static ArrayList<AliveRobot> robotList;
+	static ArrayList<String> deadRobots;
+	static ArrayList<String> teammates;
+	AliveRobot currentTarget;
 
 	public void run(){
 		setBodyColor(Color.white);
@@ -26,64 +26,74 @@ public class pbl_robot extends TeamRobot {
 		setAdjustRadarForGunTurn(true);
 		setAdjustGunForRobotTurn(true);
 
-		turnRadarRight(360);
+		robotList = new ArrayList<AliveRobot>();
+		deadRobots = new ArrayList<String>();
+		teammates = new ArrayList<String>(Arrays.asList("G07_Leader","G07_Sub1","GG07_Sub2"));
 
 		while (true) {
-
-			setTurnRight(e_rad);
-		    setAhead(e_lenth - 50);
-
-		    if(sre != null) {
-		    	if(!isTeammate(sre.getName())) {
-					scanEnemy=true;
-				}
-
-
-		    	setRadar(sre);
-		    }
-
-		    execute();
+			turnRadarRight(360);
+			for (AliveRobot aliveRobot : robotList) {
+				System.out.println("name: "+aliveRobot.getName() + "  (x,y): ("+aliveRobot.getX()+","+getY()+")");
+			}
+			System.out.println("\n");
 		}
 	}
 
 	@Override
 	public void onScannedRobot(ScannedRobotEvent e) {
-		sre = e;
-
-		if(currentTarget != null) {
-			if (currentTarget.getName().equals(e.getName()) && !isTeammate(currentTarget.getName())) {
-				selectFireMode(e);
-				return;
-			}else {
-				currentTarget = null;
+		int index = 0;
+		double bearing = getHeading() + e.getBearing();
+		if(!teammates.contains(e.getName())) {
+			if(robotList.size() != 0) {
+				for (AliveRobot aliveRobot : robotList) {
+					if(aliveRobot.getName().equals(e.getName())) {
+						break;
+					}
+					index++;
+				}
+				if(index >= robotList.size()) {
+					if(deadRobots.size() != 0 &&  !deadRobots.contains(e.getName())){
+						robotList.add(new AliveRobot(e, getTime(), bearing, getX(), getY()));
+					}
+				}else{
+					updateRobotInfo(robotList.get(index), e, bearing, getTime(), getX(), getY());
+				}
+			}else{
+				robotList.add(new AliveRobot(e, getTime(), bearing, getX(), getY()));
 			}
 		}
-		currentTarget = new Target(e.getName(), e.getHeading(), getTime());
 	}
 
-	private void setRadar(ScannedRobotEvent e){
-	    double turnradar1;
-	    double turnradar2;
+	@Override
+	public void onRobotDeath(RobotDeathEvent e) {
+		if(deadRobots.size() == 0) {
+			addDeadRobots(e);
+		}
+		else if(!deadRobots.contains(e.getName())){
+			addDeadRobots(e);
+		}
 
-	    if(scanEnemy){
-	    	turnradar1 = getRadarHeading() - e.getBearing() - getHeading();
-	    	if(turnradar1 < 180 || -180 < turnradar1){
-	    		turnRadarLeft(turnradar1);
-	    		turnRadarLeft(45);
-	    		turnRadarRight(90);
-		    } else {
-		    	if(turnradar1 > 0){						//180<turnradar1<360
-		    		turnradar2 = 360 - turnradar1;
-		    	}else{									//-360<turnradar1<-180
-		    		turnradar2 = 360 + turnradar1;
-		    	}
-		    	turnRadarRight(turnradar2);
-		    	turnRadarRight(45);
-		    	turnRadarLeft(90);
-		    }
-	    } else {
-	    	turnRadarRight(360);
-	    }
+		int index = 0;
+		for (AliveRobot aliveRobot : robotList) {
+			if(aliveRobot.getName().equals(e.getName())) {
+				index++;
+				removeAliveRobot(index);
+				break;
+			}
+		}
+	}
+
+	public static synchronized void addDeadRobots(RobotDeathEvent e){
+		deadRobots.add(e.getName());
+	}
+
+	public static synchronized void removeAliveRobot(int index) {
+		robotList.remove(index);
+	}
+
+	public static synchronized void updateRobotInfo(AliveRobot aliveRobot, ScannedRobotEvent e,
+			double bearing, long time, double x, double y) {
+		aliveRobot.update(e, time, bearing, x, y);
 	}
 
 	private void selectFireMode(ScannedRobotEvent e) {
@@ -93,7 +103,7 @@ public class pbl_robot extends TeamRobot {
 
 		if (Math.abs(angularVelocity) > 0.00001) {
 			//角度の変化が大きいときは、円形予測
-			enkeiShageki(e, diff, angularVelocity);
+			enkeiShageki(e, angularVelocity);
 		}else {
 			senkeiShageki(e);
 		}
@@ -101,15 +111,14 @@ public class pbl_robot extends TeamRobot {
 	}
 
 	private double determineEnergy(double robotDistance) {
-		if (robotDistance > 200 || getEnergy() < 15)
-		return 1;
-		else if (robotDistance > 50)
-		return 2;
-		else
-		return 3;
+		if (robotDistance > 200 || getEnergy() < 15) return 0;
+		else if (robotDistance > 100) return 1;
+		else if (robotDistance > 50) return 2;
+		else return 3;
 	}
 
-	private void enkeiShageki(ScannedRobotEvent e, long diff, double angularVelocity) {
+	// 円形予測に基づく相手の予測地点に対する角度を算出
+	private double enkeiYosoku(ScannedRobotEvent e, double angularVelocity) {
 		double energy = determineEnergy(e.getDistance());
 		double bulletVelocity = 20 - 3 * energy;
 		double bulletTime = e.getDistance() / bulletVelocity;
@@ -125,9 +134,6 @@ public class pbl_robot extends TeamRobot {
 		double nextY = y + radius * Math.sin(Math.toRadians(e.getHeading()))
 						- radius * Math.sin(Math.toRadians(e.getHeading() + dRad));
 
-		e_rad = e.getBearing();
-		e_lenth = e.getDistance();
-
 		if(nextX < 0){
 			nextX = 0;
 		}else if(nextX > 799){
@@ -142,18 +148,19 @@ public class pbl_robot extends TeamRobot {
 
 		double dx = nextX - getX();
 		double dy = nextY -getY();
-		double theta = Math.toDegrees(Math.atan2(dx, dy));
+		return Math.toDegrees(Math.atan2(dx, dy));
+	}
 
-		System.out.print("x: " + nextX + " , y: " + nextY + ", theta: " + theta + "\n");
-
-		turnGunRight(normalRelativeAngleDegrees(theta - getGunHeading()));
+	private void enkeiShageki(ScannedRobotEvent e, double angularVelocity) {
+		double energy = determineEnergy(e.getDistance());
+		turnGunRight(normalRelativeAngleDegrees(enkeiYosoku(e, angularVelocity) - getGunHeading()));
 		fire(energy);
 
 		currentTarget.setHead(e.getHeading());
 		currentTarget.setTime(getTime());
 	}
 
-	private void senkeiShageki(ScannedRobotEvent e) {
+	private double senkeiYosoku(ScannedRobotEvent e) {
 		double energy = determineEnergy(e.getDistance());
 		double bulletVelocity = 20 - 3 * energy;
 		// Calculate enemy bearing
@@ -193,56 +200,109 @@ public class pbl_robot extends TeamRobot {
 			double dy = dy1 + dy2;
 
 			// Calculate angle to target
-			double theta = Math.toDegrees(Math.atan2(dx, dy));
-
-			double x = dx + getX();
-			double y = dy + getY();
-			System.out.print("x: " + x + " , y: " + y + ", theta: " + theta + "\n");
-
-			// Turn gun to target
-			turnGunRight(normalRelativeAngleDegrees(theta - getGunHeading()));
-			fire(energy);
-		}
+			return Math.toDegrees(Math.atan2(dx, dy));
+		}else return 1000;
 	}
 
-	//**********************************
-
-	void move(double x, double y, double lenth) {
-		if(lenth < 100) {
-			turnRight(e_rad);
+	private void senkeiShageki(ScannedRobotEvent e) {
+		double point = senkeiYosoku(e);
+		if(point == 1000) {
+			return;
 		}else {
-
+			turnGunRight(normalRelativeAngleDegrees(senkeiYosoku(e) - getGunHeading()));
+			fire(determineEnergy(e.getDistance()));
 		}
 	}
 
-	//**********************************
 
-	class Target {
+	/*
+	 * 保持する情報
+	 *  ・名前
+	 *  ・(x,y)座標
+	 *  ・速度
+	 *  ・向き
+	 *  ・残りエネルギー
+	 *  ・時間
+	 */
+	class AliveRobot {
 		private String name = null;
+		private double x = 0;
+		private double y = 0;
+		private double velocity = 0;
 		private double head = 0;
+		private double energy = 0;
 		private long time = 0;
-		public Target(String n, double h, long t) {
-			setName(n);
-			setHead(h);
+		public AliveRobot(ScannedRobotEvent e, long t, double bearing,
+				double x, double y) {
+			setName(e.getName());
+			setX(x, e.getDistance(), bearing); // bearing = getHeading() + e.getBearing();
+			setY(y, e.getDistance(), bearing);
+			setVelocity(e.getVelocity());
+			setHead(e.getHeading());
+			setEnergy(e.getEnergy());
 			setTime(t);
 		}
+
+		// すべての情報を更新する
+		public void update(ScannedRobotEvent e, long t, double bearing,
+				double x, double y) {
+			setX(x, e.getDistance(), bearing); // bearing = getHeading() + e.getBearing();
+			setY(y, e.getDistance(), bearing);
+			setVelocity(e.getVelocity());
+			setHead(e.getHeading());
+			setEnergy(e.getEnergy());
+			setTime(t);
+		}
+
+		// 名前
 		public String getName() {
 			return name;
 		}
-		private void setName(String n) {
+		public void setName(String n) {
 			name = n;
 		}
+		// x座標
+		public double getX() {
+			return x;
+		}
+		public void setX(double getX, double distance, double bearing) {
+			x = getX +distance * Math.sin(Math.toRadians(bearing));
+		}
+		// y座標
+		public double getY() {
+			return y;
+		}
+		public void setY(double getY, double distance, double bearing) {
+			y = getY +distance * Math.cos(Math.toRadians(bearing));
+		}
+		// 速さ
+		public double getVelocity() {
+			return velocity;
+		}
+		public void setVelocity(double v) {
+			velocity = v;
+		}
+		// 向き
 		public double getHead() {
 			return head;
 		}
-		private void setHead(double h) {
+		public void setHead(double h) {
 			head = h;
 		}
+		// 残りエネルギー
+		public double getEnergy() {
+			return energy;
+		}
+		public void setEnergy(double e) {
+			energy = e;
+		}
+		// 時間
 		public long getTime() {
 			return time;
 		}
-		private void setTime(long t) {
+		public void setTime(long t) {
 			time = t;
 		}
 	}
 }
+
