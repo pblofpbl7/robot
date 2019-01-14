@@ -26,7 +26,7 @@ public class G07_Sub2 extends G07_Leader {
 
 		robotList = new ArrayList<AliveRobot>();
 		deadRobots = new ArrayList<String>();
-		teammates = new ArrayList<String>(Arrays.asList("G07_Leader","G07_Sub1","G07_Sub2"));
+		teammates = new ArrayList<String>(Arrays.asList("group07.G07_Leader*","group07.G07_Sub1*","group07.G07_Sub2*"));
 
 		while (true) {
 			turnRadarRight(360);
