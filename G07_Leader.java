@@ -8,7 +8,6 @@ import static robocode.util.Utils.*;
 
 import java.awt.Color;
 import java.util.ArrayList;
-import java.util.Arrays;
 
 import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
@@ -17,7 +16,7 @@ import robocode.TeamRobot;
 public class G07_Leader extends TeamRobot {
 	static ArrayList<AliveRobot> robotList;
 	static ArrayList<String> deadRobots;
-	static ArrayList<String> teammates;
+	//static ArrayList<String> teammates;
 	AliveRobot currentTarget;
     private double e_rad;
     private double e_lenth;
@@ -34,7 +33,7 @@ public class G07_Leader extends TeamRobot {
 
 		robotList = new ArrayList<AliveRobot>();
 		deadRobots = new ArrayList<String>();
-		teammates = new ArrayList<String>(Arrays.asList("group07.G07_Leader*","group07.G07_Sub1*","group07.G07_Sub2*"));
+		//teammates = new ArrayList<String>(Arrays.asList("group07.G07_Leader*","group07.G07_Sub1*","group07.G07_Sub2*"));
 
 		while (true) {
 			turnRadarRight(360);
@@ -58,7 +57,7 @@ public class G07_Leader extends TeamRobot {
 			e_lenth = e.getDistance();
 		}
 
-		if(!teammates.contains(e.getName())) {
+		if(!e.getName().contains("G07")) {
 			if(robotList.size() != 0) {
 				for (AliveRobot aliveRobot : robotList) {
 					if(aliveRobot.getName().equals(e.getName())) {
@@ -161,8 +160,8 @@ public class G07_Leader extends TeamRobot {
 
 	private double determineEnergy(double robotDistance) {
 		if (robotDistance > 200 || getEnergy() < 15) return 0;
-		else if (robotDistance > 100) return 1;
-		else if (robotDistance > 50) return 2;
+		else if (robotDistance > 150) return 1;
+		else if (robotDistance > 100) return 2;
 		else return 3;
 	}
 
