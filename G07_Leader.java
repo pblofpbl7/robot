@@ -2,10 +2,6 @@ package group07;
 
 import static robocode.util.Utils.*;
 
-/*
- * 死亡時にリストの初期化が必要？
- */
-
 import java.awt.Color;
 import java.util.ArrayList;
 
@@ -14,9 +10,7 @@ import robocode.ScannedRobotEvent;
 import robocode.TeamRobot;
 
 public class G07_Leader extends TeamRobot {
-	static ArrayList<AliveRobot> robotList;
-	static ArrayList<String> deadRobots;
-	//static ArrayList<String> teammates;
+	ArrayList<String> deadRobots = new ArrayList<String>();
 	AliveRobot currentTarget;
     private double e_rad;
     private double e_lenth;
@@ -31,91 +25,38 @@ public class G07_Leader extends TeamRobot {
 		setAdjustRadarForGunTurn(true);
 		setAdjustGunForRobotTurn(true);
 
-		robotList = new ArrayList<AliveRobot>();
-		deadRobots = new ArrayList<String>();
-		//teammates = new ArrayList<String>(Arrays.asList("group07.G07_Leader*","group07.G07_Sub1*","group07.G07_Sub2*"));
-
 		while (true) {
 			turnRadarRight(360);
 			wall_move();
-
-			for (AliveRobot aliveRobot : robotList) {
-				System.out.println("name: "+aliveRobot.getName() + "  (x,y): ("+aliveRobot.getX()+","+getY()+")");
+			if(currentTarget != null) {
+				System.out.println(currentTarget.getName());
 			}
-			System.out.println("\n");
 		}
 	}
 
 	@Override
 	public void onScannedRobot(ScannedRobotEvent e) {
-		int index = 0;
-		double bearing = getHeading() + e.getBearing();
 
 		if(currentTarget != null && currentTarget.getName().equals(e.getName())) {
+			double bearing = getHeading() + e.getBearing();
 			selectFireMode(e);
+			currentTarget.update(e, getTime(), bearing, getX(), getY());
 			e_rad = e.getBearing();
 			e_lenth = e.getDistance();
 		}
-
-		if(!e.getName().contains("G07")) {
-			if(robotList.size() != 0) {
-				for (AliveRobot aliveRobot : robotList) {
-					if(aliveRobot.getName().equals(e.getName())) {
-						break;
-					}
-					index++;
-				}
-				if(index >= robotList.size()) {
-					if(deadRobots.size() == 0 || !deadRobots.contains(e.getName())) {
-						AliveRobot ar = new AliveRobot(e, getTime(), bearing, getX(), getY());
-						robotList.add(ar);
-						determineTarget(ar);
-					}
-				}else{
-					updateRobotInfo(robotList.get(index), e, bearing, getTime(), getX(), getY());
-					determineTarget(robotList.get(index));
-				}
-			}else{
-				AliveRobot ar = new AliveRobot(e, getTime(), bearing, getX(), getY());
-				robotList.add(ar);
-				determineTarget(ar);
-			}
+		else if(!e.getName().contains("G07")) {
+			determineTarget(e);
 		}
-
 	}
 
 	@Override
 	public void onRobotDeath(RobotDeathEvent e) {
 		if(deadRobots.size() == 0) {
-			addDeadRobots(e);
+			deadRobots.add(e.getName());
 		}
 		else if(!deadRobots.contains(e.getName())){
-			addDeadRobots(e);
+			deadRobots.add(e.getName());
 		}
-
-		int index = 0;
-		for (AliveRobot aliveRobot : robotList) {
-			if(aliveRobot.getName().equals(e.getName())) {
-				index++;
-				removeAliveRobot(index);
-				break;
-			}
-		}
-
-
-	}
-
-	public static synchronized void addDeadRobots(RobotDeathEvent e){
-		deadRobots.add(e.getName());
-	}
-
-	public static synchronized void removeAliveRobot(int index) {
-		robotList.remove(index);
-	}
-
-	public static synchronized void updateRobotInfo(AliveRobot aliveRobot, ScannedRobotEvent e,
-			double bearing, long time, double x, double y) {
-		aliveRobot.update(e, time, bearing, x, y);
 	}
 
 	private void selectFireMode(ScannedRobotEvent e) {
@@ -135,23 +76,47 @@ public class G07_Leader extends TeamRobot {
 
 	}
 
-	private void determineTarget(AliveRobot ar) {
+	private void determineTarget(ScannedRobotEvent e) {
+		double bearing = getHeading() + e.getBearing();
+
 		if(currentTarget == null) {
-			if(ar.getName().contains("Sub1")) {
-				currentTarget = ar;
+			if(e.getName().contains("Sub1")) {
+				currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
 			}
 		} else if(deadRobots.size() != 0) {
 			if(deadRobots.contains(currentTarget.getName())) {
 				if(currentTarget.getName().contains("Sub1")) {
-					if(ar.getName().contains("Sub2")) {
-						currentTarget = ar;
+					if(e.getName().contains("Sub2")) {
+						currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+					} else if(e.getName().contains("Leader")) {
+						boolean isInList = false;
+						for (String dead : deadRobots) {
+							if(dead.contains("Sub2")) {
+								isInList = !isInList;
+								break;
+							}
+						}
+						if(isInList) {
+							currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+						}
 					}
 				} else if(currentTarget.getName().contains("Sub2")) {
-					if(ar.getName().contains("Leader")) {
-						currentTarget = ar;
+					if(e.getName().contains("Leader")) {
+						currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+					} else {
+						boolean isInList = false;
+						for (String dead : deadRobots) {
+							if(dead.contains("Leader")) {
+								isInList = !isInList;
+								break;
+							}
+						}
+						if(isInList) {
+							currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+						}
 					}
 				} else {
-					currentTarget = ar;
+					currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
 				}
 			}
 		}
@@ -159,9 +124,9 @@ public class G07_Leader extends TeamRobot {
 
 
 	private double determineEnergy(double robotDistance) {
-		if (robotDistance > 200 || getEnergy() < 15) return 0;
-		else if (robotDistance > 150) return 1;
-		else if (robotDistance > 100) return 2;
+		if (robotDistance > 150 || getEnergy() < 15) return 0;
+		else if (robotDistance > 110) return 1;
+		else if (robotDistance > 70) return 2;
 		else return 3;
 	}
 

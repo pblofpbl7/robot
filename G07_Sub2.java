@@ -7,8 +7,10 @@ import java.util.ArrayList;
 
 import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
+import robocode.TeamRobot;
 
-public class G07_Sub2 extends G07_Leader {
+public class G07_Sub2 extends TeamRobot {
+	ArrayList<String> deadRobots = new ArrayList<String>();
 	AliveRobot currentTarget;
     private double e_rad;
     private double e_lenth;
@@ -23,86 +25,38 @@ public class G07_Sub2 extends G07_Leader {
 		setAdjustRadarForGunTurn(true);
 		setAdjustGunForRobotTurn(true);
 
-		robotList = new ArrayList<AliveRobot>();
-		deadRobots = new ArrayList<String>();
-		//teammates = new ArrayList<String>(Arrays.asList("group07.G07_Leader*","group07.G07_Sub1*","group07.G07_Sub2*"));
-
 		while (true) {
 			turnRadarRight(360);
 			wall_move();
+			if(currentTarget != null) {
+				System.out.println(currentTarget.getName());
+			}
 		}
 	}
 
 	@Override
 	public void onScannedRobot(ScannedRobotEvent e) {
-		int index = 0;
-		double bearing = getHeading() + e.getBearing();
 
 		if(currentTarget != null && currentTarget.getName().equals(e.getName())) {
+			double bearing = getHeading() + e.getBearing();
 			selectFireMode(e);
+			currentTarget.update(e, getTime(), bearing, getX(), getY());
 			e_rad = e.getBearing();
 			e_lenth = e.getDistance();
 		}
-
-		if(!e.getName().contains("G07")) {
-			if(robotList.size() != 0) {
-				for (AliveRobot aliveRobot : robotList) {
-					if(aliveRobot.getName().equals(e.getName())) {
-						break;
-					}
-					index++;
-				}
-				if(index >= robotList.size()) {
-					if(deadRobots.size() == 0 || !deadRobots.contains(e.getName())) {
-						AliveRobot ar = new AliveRobot(e, getTime(), bearing, getX(), getY());
-						robotList.add(ar);
-						determineTarget(ar);
-					}
-				}else{
-					updateRobotInfo(robotList.get(index), e, bearing, getTime(), getX(), getY());
-					determineTarget(robotList.get(index));
-				}
-			}else{
-				AliveRobot ar = new AliveRobot(e, getTime(), bearing, getX(), getY());
-				robotList.add(ar);
-				determineTarget(ar);
-			}
+		else if(!e.getName().contains("G07")) {
+			determineTarget(e);
 		}
-
 	}
 
 	@Override
 	public void onRobotDeath(RobotDeathEvent e) {
 		if(deadRobots.size() == 0) {
-			addDeadRobots(e);
+			deadRobots.add(e.getName());
 		}
 		else if(!deadRobots.contains(e.getName())){
-			addDeadRobots(e);
+			deadRobots.add(e.getName());
 		}
-
-		int index = 0;
-		for (AliveRobot aliveRobot : robotList) {
-			if(aliveRobot.getName().equals(e.getName())) {
-				index++;
-				removeAliveRobot(index);
-				break;
-			}
-		}
-
-
-	}
-
-	public static synchronized void addDeadRobots(RobotDeathEvent e){
-		deadRobots.add(e.getName());
-	}
-
-	public static synchronized void removeAliveRobot(int index) {
-		robotList.remove(index);
-	}
-
-	public static synchronized void updateRobotInfo(AliveRobot aliveRobot, ScannedRobotEvent e,
-			double bearing, long time, double x, double y) {
-		aliveRobot.update(e, time, bearing, x, y);
 	}
 
 	private void selectFireMode(ScannedRobotEvent e) {
@@ -122,23 +76,47 @@ public class G07_Sub2 extends G07_Leader {
 
 	}
 
-	private void determineTarget(AliveRobot ar) {
+	private void determineTarget(ScannedRobotEvent e) {
+		double bearing = getHeading() + e.getBearing();
+
 		if(currentTarget == null) {
-			if(ar.getName().contains("Sub1")) {
-				currentTarget = ar;
+			if(e.getName().contains("Sub1")) {
+				currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
 			}
 		} else if(deadRobots.size() != 0) {
 			if(deadRobots.contains(currentTarget.getName())) {
 				if(currentTarget.getName().contains("Sub1")) {
-					if(ar.getName().contains("Sub2")) {
-						currentTarget = ar;
+					if(e.getName().contains("Sub2")) {
+						currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+					} else if(e.getName().contains("Leader")) {
+						boolean isInList = false;
+						for (String dead : deadRobots) {
+							if(dead.contains("Sub2")) {
+								isInList = !isInList;
+								break;
+							}
+						}
+						if(isInList) {
+							currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+						}
 					}
 				} else if(currentTarget.getName().contains("Sub2")) {
-					if(ar.getName().contains("Leader")) {
-						currentTarget = ar;
+					if(e.getName().contains("Leader")) {
+						currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+					} else {
+						boolean isInList = false;
+						for (String dead : deadRobots) {
+							if(dead.contains("Leader")) {
+								isInList = !isInList;
+								break;
+							}
+						}
+						if(isInList) {
+							currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
+						}
 					}
 				} else {
-					currentTarget = ar;
+					currentTarget = new AliveRobot(e, getTime(), bearing, getX(), getY());
 				}
 			}
 		}
@@ -336,4 +314,95 @@ public class G07_Sub2 extends G07_Leader {
 			main_move();
 		}
 	}
+
+	/*
+	 * 保持する情報
+	 *  ・名前
+	 *  ・(x,y)座標
+	 *  ・速度
+	 *  ・向き
+	 *  ・残りエネルギー
+	 *  ・時間
+	 */
+	public class AliveRobot {
+		private String name = null;
+		private double x = 0;
+		private double y = 0;
+		private double velocity = 0;
+		private double head = 0;
+		private double energy = 0;
+		private long time = 0;
+		public AliveRobot(ScannedRobotEvent e, long t, double bearing,
+				double x, double y) {
+			setName(e.getName());
+			setX(x, e.getDistance(), bearing); // bearing = getHeading() + e.getBearing();
+			setY(y, e.getDistance(), bearing);
+			setVelocity(e.getVelocity());
+			setHead(e.getHeading());
+			setEnergy(e.getEnergy());
+			setTime(t);
+		}
+
+		// すべての情報を更新する
+		public void update(ScannedRobotEvent e, long t, double bearing,
+				double x, double y) {
+			setX(x, e.getDistance(), bearing); // bearing = getHeading() + e.getBearing();
+			setY(y, e.getDistance(), bearing);
+			setVelocity(e.getVelocity());
+			setHead(e.getHeading());
+			setEnergy(e.getEnergy());
+			setTime(t);
+		}
+
+		// 名前
+		public String getName() {
+			return name;
+		}
+		public void setName(String n) {
+			name = n;
+		}
+		// x座標
+		public double getX() {
+			return x;
+		}
+		public void setX(double getX, double distance, double bearing) {
+			x = getX +distance * Math.sin(Math.toRadians(bearing));
+		}
+		// y座標
+		public double getY() {
+			return y;
+		}
+		public void setY(double getY, double distance, double bearing) {
+			y = getY +distance * Math.cos(Math.toRadians(bearing));
+		}
+		// 速さ
+		public double getVelocity() {
+			return velocity;
+		}
+		public void setVelocity(double v) {
+			velocity = v;
+		}
+		// 向き
+		public double getHead() {
+			return head;
+		}
+		public void setHead(double h) {
+			head = h;
+		}
+		// 残りエネルギー
+		public double getEnergy() {
+			return energy;
+		}
+		public void setEnergy(double e) {
+			energy = e;
+		}
+		// 時間
+		public long getTime() {
+			return time;
+		}
+		public void setTime(long t) {
+			time = t;
+		}
+	}
+
 }
