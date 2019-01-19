@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
 import robocode.TeamRobot;
+import robocode.HitRobotEvent;
 
 public class G07_Sub1 extends TeamRobot {
 	ArrayList<String> deadRobots = new ArrayList<String>();
@@ -223,10 +224,16 @@ public class G07_Sub1 extends TeamRobot {
 		}
 	}
 
+	@Override
+	public void onHitRobot(HitRobotEvent e) {
+		setTurnRight(20);
+		setAhead(-100);
+	}
+
 	void main_move() {
 
 		setTurnRight(e_rad);
-		setAhead(e_lenth - 50);
+		setAhead(e_lenth - 100);
 
 	}
 
