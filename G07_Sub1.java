@@ -5,10 +5,10 @@ import static robocode.util.Utils.*;
 import java.awt.Color;
 import java.util.ArrayList;
 
+import robocode.HitRobotEvent;
 import robocode.RobotDeathEvent;
 import robocode.ScannedRobotEvent;
 import robocode.TeamRobot;
-import robocode.HitRobotEvent;
 
 public class G07_Sub1 extends TeamRobot {
 	ArrayList<String> deadRobots = new ArrayList<String>();
@@ -45,7 +45,7 @@ public class G07_Sub1 extends TeamRobot {
 			e_rad = e.getBearing();
 			e_lenth = e.getDistance();
 		}
-		else if(!e.getName().contains("G07")) {
+		else if(!isTeammate(e.getName())) {
 			determineTarget(e);
 		}
 	}
