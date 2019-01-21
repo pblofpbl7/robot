@@ -232,7 +232,17 @@ public class G07_Sub2 extends TeamRobot {
 
 	void main_move() {
 
-		setTurnRight(e_rad );
+		double len, sq_len, a2;
+		double rad2;
+		double a=100;
+
+		sq_len = Math.pow(e_lenth, 2) - Math.pow(a, 2);
+		len = Math.sqrt(sq_len);
+
+		a2 = a/len + a%len;
+    	rad2 = 1/( Math.tan(a2) ) + 1%( Math.tan(a2) );
+
+		setTurnRight(e_rad - rad2);
 		setAhead(e_lenth - 100);
 
 	}
